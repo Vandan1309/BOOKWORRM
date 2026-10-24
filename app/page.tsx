@@ -55,6 +55,8 @@ function Wordmark({ dark = false }: { dark?: boolean }) {
 function WelcomeScreen({ onEnter, onAbout }: { onEnter: () => void; onAbout: () => void }) {
   return <main className="welcome-screen">
     <div className="welcome-art" aria-hidden="true" />
+    <div className="welcome-glow" aria-hidden="true" />
+    <div className="fireflies" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
     <div className="welcome-noise" aria-hidden="true" />
     <header className="welcome-header"><Wordmark dark /><span className="welcome-descriptor">Your AI-Assisted Bookmark</span><button className="text-link light-link" onClick={onAbout}>About BOOKWORRM <ArrowUpRight data-icon="inline-end" /></button></header>
     <section className="welcome-content">
