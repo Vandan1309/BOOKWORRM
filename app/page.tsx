@@ -49,7 +49,7 @@ const mockAnswers: Record<string, string> = {
 function getBook(id: string) { return books.find((book) => book.id === id) ?? books[0] }
 
 function Wordmark({ dark = false }: { dark?: boolean }) {
-  return <div className={`wordmark ${dark ? 'wordmark-dark' : ''}`}><span>BOOKWO</span><span className="brand-r">R</span><span>RM</span></div>
+  return <div className={`wordmark ${dark ? 'wordmark-dark' : ''}`}><span>BOOKWOR</span><span className="brand-r">R</span><span>M</span></div>
 }
 
 function WelcomeScreen({ onEnter, onAbout }: { onEnter: () => void; onAbout: () => void }) {
@@ -58,7 +58,7 @@ function WelcomeScreen({ onEnter, onAbout }: { onEnter: () => void; onAbout: () 
     <div className="welcome-glow" aria-hidden="true" />
     <div className="fireflies" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
     <div className="welcome-noise" aria-hidden="true" />
-    <header className="welcome-header"><Wordmark dark /><span className="welcome-descriptor">Your AI-Assisted Bookmark</span><button className="text-link light-link" onClick={onAbout}>About BOOKWORRM <ArrowUpRight data-icon="inline-end" /></button></header>
+    <header className="welcome-header"><Wordmark dark /><span className="welcome-descriptor">Your AI-Assisted Book explorer</span><button className="text-link light-link" onClick={onAbout}>About BOOKWORRM <ArrowUpRight data-icon="inline-end" /></button></header>
     <section className="welcome-content">
       <p className="eyebrow light-eyebrow"><Feather data-icon="inline-start" /> A Rewamp Digital project</p>
       <h1>Every book holds<br /><em>a world.</em></h1>
