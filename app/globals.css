@@ -58,3 +58,40 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .welcome-foot { font-size: .5rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+
+/* Final responsive alignment pass */
+.welcome-header {
+  display: grid;
+  grid-template-columns: max-content minmax(11rem, 1fr) max-content;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.75rem);
+}
+.welcome-header .welcome-descriptor,
+.welcome-header .text-link { margin: 0; }
+.welcome-header .welcome-descriptor { max-width: 18rem; }
+.welcome-header .text-link { justify-self: end; white-space: nowrap; }
+.welcome-content h1 { width: 100%; max-width: 14ch; }
+.footer {
+  grid-template-columns: minmax(0, 1.35fr) minmax(7rem, .7fr) minmax(0, 1.35fr);
+  align-items: start;
+}
+.footer-brand, .footer-links, .footer-credit { min-width: 0; }
+.footer-credit { overflow-wrap: anywhere; }
+@media (min-width: 701px) and (max-width: 1100px) {
+  .welcome-header { width: min(100% - 2.5rem, 920px); grid-template-columns: max-content minmax(8rem, 1fr) max-content; gap: 1.25rem; }
+  .welcome-header .welcome-descriptor { font-size: .68rem; max-width: 13rem; }
+  .welcome-header .text-link { font-size: .66rem; }
+  .footer { width: min(100% - 2.5rem, 920px); gap: 1.5rem; }
+}
+@media (max-width: 700px) {
+  .welcome-header { width: min(100% - 2rem, 34rem); display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+  .welcome-header .welcome-descriptor { display: none; }
+  .welcome-header .text-link { max-width: 9.5rem; white-space: normal; line-height: 1.25; }
+  .welcome-content h1 { max-width: 12ch; }
+  .footer { width: min(100% - 2rem, 34rem); grid-template-columns: 1fr; gap: 1.35rem; padding-top: 2rem; padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+  .footer-credit { text-align: left; }
+}
+@media (max-width: 380px) {
+  .welcome-header .wordmark { font-size: .9rem; letter-spacing: .12em; }
+  .welcome-header .text-link { max-width: 8rem; font-size: .59rem; }
+}
