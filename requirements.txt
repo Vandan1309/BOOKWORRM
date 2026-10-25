@@ -4,5 +4,5 @@ uvicorn[standard]
 python-dotenv
 openai
 chromadb
-sentence-transformers
 pymupdf
+qdrant-client

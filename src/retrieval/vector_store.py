@@ -1,15 +1,19 @@
 
-from pathlib import Path
+import os
 import re
-import chromadb
+import uuid
 
+from dotenv import load_dotenv
+from qdrant_client import QdrantClient, models
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = PROJECT_ROOT / "chroma_db"
+load_dotenv()
+
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_DIMENSION = 384
 
 
 def make_collection_name(book_id: str) -> str:
-    """Convert a book ID into a valid, predictable collection name."""
+    """Create a predictable Qdrant collection name for a book."""
     safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", book_id.lower())
     safe_id = safe_id.strip("_-")
 
@@ -21,77 +25,114 @@ def make_collection_name(book_id: str) -> str:
 
 class VectorStore:
     def __init__(self, book_id: str = "jungle_book"):
-        self.client = chromadb.PersistentClient(path=str(DB_PATH))
+        url = os.getenv("QDRANT_URL")
+        api_key = os.getenv("QDRANT_API_KEY")
+
+        if not url or not api_key:
+            raise RuntimeError(
+                "QDRANT_URL and QDRANT_API_KEY must be configured."
+            )
+
+        self.client =  QdrantClient(
+    url=url,
+    api_key=api_key,
+    cloud_inference=True,
+)
         self.book_id = book_id
         self.collection_name = make_collection_name(book_id)
 
-        self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            metadata={"hnsw:space": "cosine"},
-        )
+        if not self.client.collection_exists(self.collection_name):
+            raise ValueError(
+                f"Qdrant collection '{self.collection_name}' does not exist."
+            )
 
-    def reset(self):
-        """Rebuild only this book's index."""
-        try:
-            self.client.delete_collection(self.collection_name)
-        except Exception:
-            pass
+        info = self.client.get_collection(self.collection_name)
+        vector_config = info.config.params.vectors
 
-        self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            metadata={"hnsw:space": "cosine"},
-        )
+        if (
+            not isinstance(vector_config, dict)
+            and vector_config.size != EMBEDDING_DIMENSION
+        ):
+            raise ValueError(
+                f"Collection '{self.collection_name}' must use "
+                f"{EMBEDDING_DIMENSION}-dimensional vectors."
+            )
 
     def add_chunks(
         self,
         chunks: list[dict],
         embeddings: list[list[float]],
     ):
+        """Add precomputed embeddings; does not run a local model."""
         if len(chunks) != len(embeddings):
             raise ValueError("Chunks and embeddings must match.")
 
-        batch_size = 100
+        points = []
 
-        for start in range(0, len(chunks), batch_size):
-            batch_chunks = chunks[start:start + batch_size]
-            batch_embeddings = embeddings[start:start + batch_size]
+        for chunk, embedding in zip(chunks, embeddings):
+            if len(embedding) != EMBEDDING_DIMENSION:
+                raise ValueError("Embedding must have 384 dimensions.")
 
-            self.collection.add(
-                ids=[c["chunk_id"] for c in batch_chunks],
-                documents=[c["text"] for c in batch_chunks],
-                embeddings=batch_embeddings,
-                metadatas=[
-                    {"page": c["page"], "book_id": self.book_id}
-                    for c in batch_chunks
-                ],
+            point_id = str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_URL,
+                    f"{self.book_id}:{chunk['chunk_id']}",
+                )
+            )
+
+            points.append(
+                models.PointStruct(
+                    id=point_id,
+                    vector=embedding,
+                    payload={
+                        "chunk_id": chunk["chunk_id"],
+                        "text": chunk["text"],
+                        "page": chunk["page"],
+                        "book_id": self.book_id,
+                    },
+                )
+            )
+
+        for start in range(0, len(points), 100):
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points[start:start + 100],
+                wait=True,
             )
 
     def search(
         self,
-        query_embedding: list[float],
+        query_text: str,
         top_k: int = 4,
     ) -> list[dict]:
-        count = self.collection.count()
+        """Embed the query through Qdrant inference and retrieve chunks."""
+        query_text = query_text.strip()
 
-        if count == 0:
+        if not query_text or top_k <= 0:
             return []
 
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=min(top_k, count),
-            include=["documents", "metadatas", "distances"],
-        )
+        results = self.client.query_points(
+            collection_name=self.collection_name,
+            query=models.Document(
+                text=query_text,
+                model=EMBEDDING_MODEL,
+            ),
+            limit=top_k,
+            with_payload=True,
+        ).points
 
         matches = []
 
-        for i, document in enumerate(results["documents"][0]):
-            metadata = results["metadatas"][0][i]
+        for point in results:
+            payload = point.payload or {}
 
-            matches.append({
-                "text": document,
-                "page": metadata["page"],
-                "book_id": metadata.get("book_id", self.book_id),
-                "distance": results["distances"][0][i],
-            })
+            matches.append(
+                {
+                    "text": payload.get("text", ""),
+                    "page": payload.get("page"),
+                    "book_id": payload.get("book_id", self.book_id),
+                    "distance": 1.0 - point.score,
+                }
+            )
 
         return matches
