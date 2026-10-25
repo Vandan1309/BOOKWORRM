@@ -3,6 +3,5 @@ fastapi
 uvicorn[standard]
 python-dotenv
 openai
-chromadb
 pymupdf
 qdrant-client
